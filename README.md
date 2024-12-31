@@ -1,6 +1,3 @@
-Sure! Below is the updated `README.md` file with the new information included:
-
-```markdown
 # Samaaye Interactive Bot
 
 ## Description
@@ -96,7 +93,7 @@ style.configure(
     relief='flat',
     padding=(20, 10)
 )
-```
+
 
 ## Contributing
 
