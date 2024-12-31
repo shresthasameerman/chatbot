@@ -93,7 +93,7 @@ style.configure(
     relief='flat',
     padding=(20, 10)
 )
-
+```
 
 ## Contributing
 
@@ -108,9 +108,8 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - The project uses Python's `tkinter` library for GUI development.
 - Thanks to the contributors and the open-source community for their support.
 
----
 
 Feel free to customize this README file further based on your specific requirements and project details.
-```
+
 
 This `README.md` file incorporates all the details from the previous `README.md` and includes the updated information.
