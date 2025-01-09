@@ -3,10 +3,28 @@ from tkinter import ttk
 from chatbot_logic import get_random_agent_name, generate_response
 from datetime import datetime
 
+# Add rounded rectangle method to Canvas
+tk.Canvas.create_rounded_rectangle = lambda self, x1, y1, x2, y2, radius=25, **kwargs: \
+    self.create_polygon(
+        x1+radius, y1,
+        x2-radius, y1,
+        x2, y1,
+        x2, y1+radius,
+        x2, y2-radius,
+        x2, y2,
+        x2-radius, y2,
+        x1+radius, y2,
+        x1, y2,
+        x1, y2-radius,
+        x1, y1+radius,
+        x1, y1,
+        smooth=True,
+        **kwargs
+    )
+
 class RoundedFrame(tk.Canvas):
-    """A custom frame with rounded corners."""
     def __init__(self, parent, width, height, corner_radius, color, **kwargs):
-        tk.Canvas.__init__(self, parent, width=width, height=height, bg=color, **kwargs)
+        tk.Canvas.__init__(self, parent, width=width, height=height, bg=parent.cget('bg'), highlightthickness=0, **kwargs)
         self.corner_radius = corner_radius
         self.color = color
         self.width = width
@@ -14,16 +32,65 @@ class RoundedFrame(tk.Canvas):
         self.draw_rounded_rect()
         
     def draw_rounded_rect(self):
-        """Draw a rectangle with rounded corners."""
-        self.create_arc((0, 0, 2*self.corner_radius, 2*self.corner_radius), start=90, extent=90, fill=self.color, outline=self.color)
-        self.create_arc((self.width-2*self.corner_radius, 0, self.width, 2*self.corner_radius), start=0, extent=90, fill=self.color, outline=self.color)
-        self.create_arc((0, self.height-2*self.corner_radius, 2*self.corner_radius, self.height), start=180, extent=90, fill=self.color, outline=self.color)
-        self.create_arc((self.width-2*self.corner_radius, self.height-2*self.corner_radius, self.width, self.height), start=270, extent=90, fill=self.color, outline=self.color)
-        self.create_rectangle((self.corner_radius, 0, self.width-self.corner_radius, self.height), fill=self.color, outline=self.color)
-        self.create_rectangle((0, self.corner_radius, self.width, self.height-self.corner_radius), fill=self.color, outline=self.color)
+        self.create_rounded_rectangle(
+            2, 2, self.width-2, self.height-2,
+            radius=self.corner_radius,
+            fill=self.color,
+            outline=self.color
+        )
+
+class RoundedEntryFrame(tk.Frame):
+    def __init__(self, parent, width, height, corner_radius, color, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.configure(bg=parent.cget('bg'))  # Match parent background
+        
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=height,
+            bg=parent.cget('bg'),  # Match parent background
+            highlightthickness=0  # Remove canvas border
+        )
+        self.canvas.pack(fill='both', expand=True)
+        
+        self.canvas.create_rounded_rectangle(
+            2, 2, width-2, height-2,
+            radius=corner_radius,
+            fill=color,
+            outline=color  # Remove outline by matching fill color
+        )
+        
+        self.entry = tk.Entry(
+            self,
+            font=("Helvetica", 12),
+            bg=color,  # Match the rounded rectangle color
+            fg="#FFFFFF",  # Text color
+            insertbackground="#FFFFFF",  # Cursor color
+            relief='flat',  # Remove 3D border
+            bd=0  # No border width
+        )
+        self.canvas.create_window(
+            width//2,
+            height//2,
+            window=self.entry,
+            width=width-20,  # Adjust width for padding
+            height=height-10  # Adjust height for padding
+        )
+
+    def get(self):
+        return self.entry.get()
+
+    def delete(self, first, last):
+        return self.entry.delete(first, last)
+
+    def bind(self, sequence, func):
+        return self.entry.bind(sequence, func)
+
+    def focus(self):
+        return self.entry.focus()
+
 
 class ScrolledFrame(tk.Frame):
-    """A frame that allows vertical scrolling of its content."""
     def __init__(self, parent, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         
@@ -35,26 +102,23 @@ class ScrolledFrame(tk.Frame):
         
         self.vsb.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
-        self.canvas.create_window((4,4), window=self.viewPort, anchor="nw", 
-                                  tags="self.viewPort")
+        self.canvas.create_window((4,4), window=self.viewPort, anchor="nw", tags="self.viewPort")
 
         self.viewPort.bind("<Configure>", self.onFrameConfigure)
 
     def onFrameConfigure(self, event):
-        '''Reset the scroll region to encompass the inner frame'''
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
 class ModernChatbotGUI:
-    """A modern, aesthetically pleasing chatbot GUI implementation."""
-
     WINDOW_WIDTH = 800
     WINDOW_HEIGHT = 800
-    PRIMARY_COLOR = "#424242"  # Dark Gray
-    SECONDARY_COLOR = "#BDBDBD"  # Light Gray
-    BACKGROUND_COLOR = "#000000"  # Black
-    USER_MSG_COLOR = "#616161"  # Medium Gray
-    BOT_MSG_COLOR = "#9E9E9E"  # Light Gray
-    TEXT_COLOR = "#FFFFFF"  # White
+    PRIMARY_COLOR = "#424242"
+    SECONDARY_COLOR = "#BDBDBD"
+    BACKGROUND_COLOR = "#000000"
+    USER_MSG_COLOR = "#616161"
+    BOT_MSG_COLOR = "#9E9E9E"
+    TEXT_COLOR = "#FFFFFF"
+    INPUT_HEIGHT = 40
 
     EXIT_PHRASES = {
         "bye", "quit", "exit", "shutdown", "good bye", "goodbye",
@@ -62,7 +126,6 @@ class ModernChatbotGUI:
     }
 
     def __init__(self):
-        """Initialize the modernized chatbot GUI."""
         self.window = tk.Tk()
         self.setup_window()
         self.create_styles()
@@ -71,12 +134,10 @@ class ModernChatbotGUI:
         self.chatbot_name = None
 
     def setup_window(self):
-        """Configure the main window with modern styling."""
         self.window.title("Modern Chat Assistant")
         self.window.geometry(f"{self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}")
         self.window.configure(bg=self.BACKGROUND_COLOR)
         
-        # Center window
         screen_width = self.window.winfo_screenwidth()
         screen_height = self.window.winfo_screenheight()
         x = (screen_width - self.WINDOW_WIDTH) // 2
@@ -84,19 +145,7 @@ class ModernChatbotGUI:
         self.window.geometry(f"+{x}+{y}")
 
     def create_styles(self):
-        """Define modern custom styles for widgets."""
         style = ttk.Style()
-        
-        # Entry style
-        style.configure(
-            'Modern.TEntry',
-            fieldbackground=self.PRIMARY_COLOR,
-            foreground=self.TEXT_COLOR,
-            borderwidth=0,
-            relief='flat'
-        )
-        
-        # Button style
         style.configure(
             'Modern.TButton',
             background=self.PRIMARY_COLOR,
@@ -108,25 +157,21 @@ class ModernChatbotGUI:
             relief='flat',
             padding=(20, 10)
         )
-        
-        # Frame style
         style.configure(
             'Modern.TFrame',
             background=self.BACKGROUND_COLOR
         )
 
     def create_message_bubble(self, message, is_user=True):
-        """Create a stylized message bubble frame."""
         bubble_color = self.USER_MSG_COLOR if is_user else self.BOT_MSG_COLOR
         bubble_frame = RoundedFrame(
             self.chat_log.viewPort,
-            width=self.WINDOW_WIDTH - 40,  # Adjust width to fit the window
-            height=60,  # Adjust height as needed
+            width=self.WINDOW_WIDTH - 40,
+            height=60,
             corner_radius=20,
             color=bubble_color
         )
         
-        # Time stamp
         time_label = tk.Label(
             bubble_frame,
             text=datetime.now().strftime("%H:%M"),
@@ -136,11 +181,10 @@ class ModernChatbotGUI:
         )
         time_label.pack(anchor="e", padx=5, pady=(2, 0))
         
-        # Message content
         msg_label = tk.Label(
             bubble_frame,
             text=message,
-            wraplength=self.WINDOW_WIDTH - 80,  # Adjust wrap length to fit the window
+            wraplength=self.WINDOW_WIDTH - 80,
             justify="left",
             font=("Helvetica", 11),
             bg=bubble_color,
@@ -153,24 +197,18 @@ class ModernChatbotGUI:
         return bubble_frame
 
     def create_widgets(self):
-        """Create and configure all GUI widgets with modern styling."""
-        # Main container
         self.main_frame = ttk.Frame(self.window, style='Modern.TFrame')
         self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # Chat container
         self.chat_container = tk.Frame(self.main_frame, bg=self.BACKGROUND_COLOR)
         self.chat_container.pack(fill=tk.BOTH, expand=True)
 
-        # Chat log with scrolling
         self.chat_log = ScrolledFrame(self.chat_container)
         self.chat_log.pack(fill=tk.BOTH, expand=True)
 
-        # Welcome Frame
         self.welcome_frame = tk.Frame(self.main_frame, bg=self.BACKGROUND_COLOR)
         self.welcome_frame.pack(fill=tk.X, pady=20)
 
-        # Welcome header
         tk.Label(
             self.welcome_frame,
             text="Welcome to Modern Chat Assistant",
@@ -179,7 +217,6 @@ class ModernChatbotGUI:
             bg=self.BACKGROUND_COLOR
         ).pack(pady=(0, 20))
 
-        # Name entry section
         self.name_frame = tk.Frame(self.welcome_frame, bg=self.BACKGROUND_COLOR)
         self.name_frame.pack(fill=tk.X, pady=10)
 
@@ -191,12 +228,15 @@ class ModernChatbotGUI:
             fg=self.TEXT_COLOR
         ).pack(pady=5)
 
-        self.name_entry = ttk.Entry(
+        self.name_entry = RoundedEntryFrame(
             self.name_frame,
-            style='Modern.TEntry',
-            font=("Helvetica", 12)
+            width=self.WINDOW_WIDTH - 200,
+            height=self.INPUT_HEIGHT,
+            corner_radius=20,
+            color=self.PRIMARY_COLOR
         )
-        self.name_entry.pack(fill=tk.X, pady=5, padx=100)
+        self.name_entry.pack(pady=5)
+
         tk.Label(
             self.name_frame,
             text="Give your assistant a name (optional)",
@@ -205,14 +245,15 @@ class ModernChatbotGUI:
             fg=self.TEXT_COLOR
         ).pack(pady=5)
 
-        self.chatbot_name_entry = ttk.Entry(
+        self.chatbot_name_entry = RoundedEntryFrame(
             self.name_frame,
-            style='Modern.TEntry',
-            font=("Helvetica", 12)
+            width=self.WINDOW_WIDTH - 200,
+            height=self.INPUT_HEIGHT,
+            corner_radius=20,
+            color=self.PRIMARY_COLOR
         )
-        self.chatbot_name_entry.pack(fill=tk.X, pady=5, padx=100)
+        self.chatbot_name_entry.pack(pady=5)
 
-        # Start button
         self.start_button = ttk.Button(
             self.name_frame,
             text="Start Chatting",
@@ -221,14 +262,14 @@ class ModernChatbotGUI:
         )
         self.start_button.pack(pady=20)
 
-        # Input area
         self.input_frame = tk.Frame(self.main_frame, bg=self.BACKGROUND_COLOR)
-        self.entry = ttk.Entry(
+        self.entry = RoundedEntryFrame(
             self.input_frame,
-            style='Modern.TEntry',
-            font=("Helvetica", 12)
+            width=self.WINDOW_WIDTH - 120,
+            height=self.INPUT_HEIGHT,
+            corner_radius=20,
+            color=self.PRIMARY_COLOR
         )
-        self.entry.bind("<Return>", self.handle_user_input)
 
         self.submit_button = ttk.Button(
             self.input_frame,
@@ -237,39 +278,32 @@ class ModernChatbotGUI:
             command=self.handle_user_input
         )
 
-        # Bind enter key
         self.name_entry.bind("<Return>", self.handle_name_submission)
         self.chatbot_name_entry.bind("<Return>", self.handle_name_submission)
+        self.entry.bind("<Return>", self.handle_user_input)
 
     def handle_name_submission(self, event=None):
-        """Process the user's and chatbot's name submissions with animated transition."""
         self.name = self.name_entry.get() or "Friend"
         self.chatbot_name = self.chatbot_name_entry.get() or get_random_agent_name()
 
-        # Fade out welcome frame
         self.welcome_frame.pack_forget()
         
-        # Show input frame
         self.input_frame.pack(fill=tk.X, pady=10)
         self.entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         self.submit_button.pack(side=tk.RIGHT)
         
-        # Add welcome message
         welcome_msg = f"Welcome {self.name}! I'm {self.chatbot_name}, your personal assistant. How can I help you today?"
         self.add_message(welcome_msg, is_user=False)
         
         self.entry.focus()
 
     def add_message(self, message, is_user=True):
-        """Add a new message bubble to the chat log."""
         bubble = self.create_message_bubble(message, is_user)
-        bubble.pack(anchor="e", padx=10, pady=5, fill="x")  # Align to the right and fill width
-        
+        bubble.pack(anchor="e", padx=10, pady=5, fill="x")
         self.chat_log.update_idletasks()
-        self.chat_log.canvas.yview_moveto(1.0)  # Auto-scroll to the bottom
+        self.chat_log.canvas.yview_moveto(1.0)
 
     def handle_user_input(self, event=None):
-        """Process user input and generate responses with modern styling."""
         user_input = self.entry.get().strip()
         if not user_input:
             return
@@ -286,11 +320,9 @@ class ModernChatbotGUI:
         self.entry.delete(0, tk.END)
 
     def is_exit_command(self, user_input: str) -> bool:
-        """Check if the user input is an exit command."""
         return any(phrase in user_input.lower() for phrase in self.EXIT_PHRASES)
 
     def run(self):
-        """Start the chatbot application."""
         self.window.mainloop()
 
 if __name__ == "__main__":
